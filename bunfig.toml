@@ -1,0 +1,15 @@
+[build]
+target = "bun"
+splitting = false
+root = "."
+
+[runtime]
+jsx = "react-jsx"
+jsxImportSource = "react"
+define = ["feature=__VERSION__"]
+
+[test]
+preload = []
+
+[bundler]
+external = ["@anthropic-ai/sdk", "chalk", "zod"]

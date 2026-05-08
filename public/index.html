@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🤖 AI Chat - Ollama</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      height: 80vh;
+      display: flex;
+      flex-direction: column;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .model-selector {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .model-selector select {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: none;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .model-selector select:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .model-selector select option {
+      background: #667eea;
+      color: white;
+    }
+
+    .status {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    .status.connected::before {
+      content: '🟢';
+      margin-right: 5px;
+    }
+
+    .status.error::before {
+      content: '🔴';
+      margin-right: 5px;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      background: #f8f9fa;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .message {
+      display: flex;
+      gap: 10px;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message.user {
+      justify-content: flex-end;
+    }
+
+    .message-content {
+      max-width: 70%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      line-height: 1.5;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    .message.user .message-content {
+      background: #667eea;
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant .message-content {
+      background: #e9ecef;
+      color: #333;
+      border-bottom-left-radius: 4px;
+    }
+
+    .message-avatar {
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+    }
+
+    .loading {
+      display: flex;
+      gap: 4px;
+      padding: 12px 16px;
+      background: #e9ecef;
+      border-radius: 12px;
+      width: fit-content;
+    }
+
+    .loading-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #667eea;
+      animation: bounce 1.4s infinite;
+    }
+
+    .loading-dot:nth-child(1) {
+      animation-delay: 0s;
+    }
+
+    .loading-dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .loading-dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% {
+        opacity: 0.3;
+        transform: translateY(0);
+      }
+      40% {
+        opacity: 1;
+        transform: translateY(-8px);
+      }
+    }
+
+    .input-area {
+      padding: 20px;
+      border-top: 1px solid #e9ecef;
+      display: flex;
+      gap: 10px;
+      background: white;
+    }
+
+    .input-area input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    .input-area input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .input-area button {
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .input-area button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .input-area button:active {
+      transform: translateY(0);
+    }
+
+    .input-area button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .clear-btn {
+      padding: 12px 16px;
+      background: #f8f9fa;
+      color: #666;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .clear-btn:hover {
+      background: #e9ecef;
+    }
+
+    .error-message {
+      background: #ffe0e0;
+      color: #c00;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border-left: 4px solid #c00;
+      margin: 10px 0;
+    }
+
+    .welcome {
+      text-align: center;
+      color: #999;
+      padding: 40px 20px;
+    }
+
+    .welcome h2 {
+      margin-bottom: 10px;
+      color: #667eea;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🤖 AI Chat - Ollama Local</h1>
+      <div class="model-selector">
+        <select id="modelSelect" onchange="changeModel(this.value)">
+          <option value="">Carregando modelos...</option>
+        </select>
+        <div class="status" id="status">Conectando...</div>
+      </div>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <div class="welcome">
+        <h2>👋 Bem-vindo ao AI Chat</h2>
+        <p>Digite sua pergunta abaixo para conversar com a IA local (Ollama)</p>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <input
+        type="text"
+        id="messageInput"
+        placeholder="Digite sua mensagem..."
+        onkeypress="handleKeyPress(event)"
+      />
+      <button onclick="sendMessage()" id="sendBtn">Enviar</button>
+      <button class="clear-btn" onclick="clearHistory()" title="Limpar conversa">🗑️</button>
+    </div>
+  </div>
+
+  <script>
+    let currentModel = '';
+    let isLoading = false;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      loadModels();
+      checkHealth();
+      setInterval(checkHealth, 30000); // Check health every 30s
+    });
+
+    async function checkHealth() {
+      try {
+        const response = await fetch('/api/health');
+        const data = await response.json();
+        updateStatus('Conectado', 'connected');
+      } catch (error) {
+        updateStatus('Erro de conexão', 'error');
+      }
+    }
+
+    async function loadModels() {
+      try {
+        const response = await fetch('/api/models');
+        const models = await response.json();
+
+        if (!models || models.length === 0) {
+          updateStatus('Nenhum modelo no Ollama', 'error');
+          document.getElementById('modelSelect').innerHTML =
+            '<option>Nenhum modelo disponível</option>';
+          return;
+        }
+
+        const select = document.getElementById('modelSelect');
+        select.innerHTML = models
+          .map(m => `<option value="${m.name}">${m.name}</option>`)
+          .join('');
+
+        currentModel = models[0].name;
+        updateStatus('Conectado', 'connected');
+      } catch (error) {
+        updateStatus('Ollama não encontrado', 'error');
+        addMessage('Erro: Verifique se o Ollama está rodando com: ollama serve', 'assistant', true);
+      }
+    }
+
+    function changeModel(model) {
+      currentModel = model;
+    }
+
+    function updateStatus(text, type) {
+      const status = document.getElementById('status');
+      status.textContent = text;
+      status.className = `status ${type}`;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('messageInput');
+      const message = input.value.trim();
+
+      if (!message || isLoading || !currentModel) return;
+
+      // Add user message
+      addMessage(message, 'user');
+      input.value = '';
+
+      // Show loading
+      isLoading = true;
+      document.getElementById('sendBtn').disabled = true;
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'message assistant';
+      loadingDiv.innerHTML = '<div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>';
+      document.getElementById('chatMessages').appendChild(loadingDiv);
+      document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, model: currentModel }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          loadingDiv.remove();
+          addMessage(data.response, 'assistant');
+          updateStatus('Conectado', 'connected');
+        } else {
+          loadingDiv.remove();
+          addMessage(`❌ Erro: ${data.error}`, 'assistant', true);
+          updateStatus('Erro', 'error');
+        }
+      } catch (error) {
+        loadingDiv.remove();
+        addMessage(`❌ Erro: ${error.message}`, 'assistant', true);
+        updateStatus('Erro de conexão', 'error');
+      } finally {
+        isLoading = false;
+        document.getElementById('sendBtn').disabled = false;
+        input.focus();
+      }
+    }
+
+    function addMessage(content, role, isError = false) {
+      const messagesDiv = document.getElementById('chatMessages');
+
+      // Remove welcome message if exists
+      const welcome = messagesDiv.querySelector('.welcome');
+      if (welcome) welcome.remove();
+
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${role}`;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'message-avatar';
+      avatar.textContent = role === 'user' ? '👤' : '🤖';
+
+      const contentDiv = document.createElement('div');
+      contentDiv.className = `message-content ${isError ? 'error-message' : ''}`;
+      contentDiv.textContent = content;
+
+      if (role === 'user') {
+        messageDiv.appendChild(contentDiv);
+        messageDiv.appendChild(avatar);
+      } else {
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(contentDiv);
+      }
+
+      messagesDiv.appendChild(messageDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function handleKeyPress(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    }
+
+    async function clearHistory() {
+      if (confirm('Tem certeza que deseja limpar o histórico?')) {
+        await fetch('/api/clear', { method: 'POST' });
+        document.getElementById('chatMessages').innerHTML =
+          '<div class="welcome"><h2>👋 Bem-vindo ao AI Chat</h2><p>Histórico limpo. Digite sua pergunta abaixo.</p></div>';
+      }
+    }
+  </script>
+</body>
+</html>
