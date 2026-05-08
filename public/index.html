@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🤖 AI Assistant - Casos de Uso</title>
+  <title>🤖 AI Assistant - Chat</title>
   <style>
     * {
       margin: 0;
@@ -15,107 +15,30 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       padding: 20px;
     }
 
-    .app {
-      max-width: 1400px;
-      margin: 0 auto;
-    }
-
-    /* Menu View */
-    .menu-view {
+    .container {
+      width: 100%;
+      max-width: 1600px;
+      height: 90vh;
       display: flex;
-      flex-direction: column;
-      gap: 40px;
-    }
-
-    .menu-header {
-      text-align: center;
-      color: white;
-      padding: 40px 20px;
-    }
-
-    .menu-header h1 {
-      font-size: 48px;
-      margin-bottom: 10px;
-      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    }
-
-    .menu-header p {
-      font-size: 18px;
-      opacity: 0.9;
-    }
-
-    .category {
+      gap: 20px;
       background: white;
       border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    }
-
-    .category-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 20px 30px;
-      font-size: 24px;
-      font-weight: 600;
-    }
-
-    .cards-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
-      padding: 30px;
-    }
-
-    .card {
-      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-      border-radius: 12px;
-      padding: 24px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      border: 2px solid transparent;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 30px rgba(102, 126, 234, 0.3);
-      border-color: #667eea;
-    }
-
-    .card-emoji {
-      font-size: 32px;
-    }
-
-    .card-title {
-      font-size: 18px;
-      font-weight: 600;
-      color: #333;
-    }
-
-    .card-description {
-      font-size: 14px;
-      color: #666;
-      line-height: 1.5;
-    }
-
-    /* Chat View */
-    .chat-view {
-      display: none;
-      flex-direction: column;
-      height: 100vh;
-      background: white;
-      border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     }
 
-    .chat-view.active {
+    /* Main Chat Section */
+    .chat-section {
+      flex: 1;
       display: flex;
+      flex-direction: column;
+      background: white;
     }
 
     .chat-header {
@@ -149,26 +72,16 @@
       color: white;
       cursor: pointer;
       font-size: 14px;
+      transition: background 0.3s;
+    }
+
+    .chat-header-controls select:hover {
+      background: rgba(255, 255, 255, 0.3);
     }
 
     .chat-header-controls select option {
       background: #667eea;
       color: white;
-    }
-
-    .back-btn {
-      background: rgba(255, 255, 255, 0.2);
-      border: none;
-      color: white;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: background 0.3s;
-    }
-
-    .back-btn:hover {
-      background: rgba(255, 255, 255, 0.3);
     }
 
     .chat-messages {
@@ -318,68 +231,139 @@
       transform: none;
     }
 
-    .status {
-      padding: 8px 12px;
-      background: rgba(102, 126, 234, 0.1);
-      color: #667eea;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
+    /* Sidebar com Cases */
+    .sidebar {
+      width: 320px;
+      border-left: 1px solid #e9ecef;
+      display: flex;
+      flex-direction: column;
+      background: #fafbfc;
+      overflow-y: auto;
     }
 
-    .status.error {
-      background: rgba(255, 0, 0, 0.1);
-      color: #c00;
+    .sidebar-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 12px 15px;
+      font-size: 14px;
+      font-weight: 600;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .sidebar-content {
+      flex: 1;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mini-card {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 2px solid transparent;
+      border-left: 4px solid #667eea;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mini-card:hover {
+      transform: translateX(4px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+      background: #f0f4ff;
+    }
+
+    .mini-card-emoji {
+      font-size: 20px;
+    }
+
+    .mini-card-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .sidebar-category {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid #e9ecef;
+    }
+
+    .sidebar-category:first-child {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+
+    .category-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #999;
+      text-transform: uppercase;
+      padding: 6px 12px;
+      margin-bottom: 6px;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e0;
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #a0aec0;
+    }
+
+    @media (max-width: 1200px) {
+      .container {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        height: 120px;
+        border-left: none;
+        border-top: 1px solid #e9ecef;
+      }
+
+      .sidebar-content {
+        flex-direction: row;
+        overflow-x: auto;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="app">
-    <!-- Menu View -->
-    <div class="menu-view" id="menuView">
-      <div class="menu-header">
-        <h1>🤖 AI Assistant</h1>
-        <p>Escolha um caso de uso especializado para começar</p>
-      </div>
-
-      <!-- Desenvolvimento -->
-      <div class="category">
-        <div class="category-header">👨‍💻 Desenvolvimento</div>
-        <div class="cards-grid" id="devCards"></div>
-      </div>
-
-      <!-- Produtividade -->
-      <div class="category">
-        <div class="category-header">⚡ Produtividade</div>
-        <div class="cards-grid" id="prodCards"></div>
-      </div>
-
-      <!-- Dados & Análise -->
-      <div class="category">
-        <div class="category-header">📊 Dados & Análise</div>
-        <div class="cards-grid" id="dataCards"></div>
-      </div>
-    </div>
-
-    <!-- Chat View -->
-    <div class="chat-view" id="chatView">
+  <div class="container">
+    <!-- Chat Section -->
+    <div class="chat-section">
       <div class="chat-header">
         <div class="chat-header-title">
-          <span id="modeEmoji">🔍</span>
-          <span id="modeTitle">Análise de Código</span>
+          <span id="modeEmoji">🤖</span>
+          <span id="modeTitle">AI Assistant</span>
         </div>
         <div class="chat-header-controls">
           <select id="modelSelect" onchange="changeModel(this.value)">
             <option value="">Carregando modelos...</option>
           </select>
-          <button class="back-btn" onclick="backToMenu()">← Voltar</button>
         </div>
       </div>
 
       <div class="chat-messages" id="chatMessages">
         <div class="welcome">
-          <h2>👋 Bem-vindo!</h2>
-          <p>Comece digitando sua pergunta abaixo</p>
+          <h2>👋 Bem-vindo ao AI Assistant</h2>
+          <p>Selecione um caso de uso à direita ou comece a conversar</p>
         </div>
       </div>
 
@@ -391,6 +375,30 @@
           onkeypress="handleKeyPress(event)"
         />
         <button onclick="sendMessage()" id="sendBtn">Enviar</button>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">📋 Casos de Uso</div>
+      <div class="sidebar-content">
+        <!-- Dev Cards -->
+        <div class="sidebar-category">
+          <div class="category-label">Desenvolvimento</div>
+          <div id="devCards"></div>
+        </div>
+
+        <!-- Prod Cards -->
+        <div class="sidebar-category">
+          <div class="category-label">Produtividade</div>
+          <div id="prodCards"></div>
+        </div>
+
+        <!-- Data Cards -->
+        <div class="sidebar-category">
+          <div class="category-label">Dados & Análise</div>
+          <div id="dataCards"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -423,21 +431,20 @@
         const response = await fetch('/api/usecases');
         const data = await response.json();
 
-        renderCards('devCards', data.development);
-        renderCards('prodCards', data.productivity);
-        renderCards('dataCards', data.data);
+        renderMiniCards('devCards', data.development);
+        renderMiniCards('prodCards', data.productivity);
+        renderMiniCards('dataCards', data.data);
       } catch (error) {
         console.error('Error loading use cases:', error);
       }
     }
 
-    function renderCards(containerId, cards) {
+    function renderMiniCards(containerId, cards) {
       const container = document.getElementById(containerId);
       container.innerHTML = cards.map(card => `
-        <div class="card" onclick="selectUseCase('${card.id}')">
-          <div class="card-emoji">${card.label.split(' ')[0]}</div>
-          <div class="card-title">${card.label}</div>
-          <div class="card-description">${card.description}</div>
+        <div class="mini-card" onclick="selectUseCase('${card.id}')">
+          <div class="mini-card-emoji">${card.label.split(' ')[0]}</div>
+          <div class="mini-card-title">${card.label}</div>
         </div>
       `).join('');
     }
@@ -470,22 +477,7 @@
       
       document.getElementById('modeEmoji').textContent = mapping.emoji;
       document.getElementById('modeTitle').textContent = mapping.title;
-      document.getElementById('menuView').style.display = 'none';
-      document.getElementById('chatView').classList.add('active');
       document.getElementById('messageInput').focus();
-      document.getElementById('chatMessages').innerHTML = `
-        <div class="welcome">
-          <h2>${mapping.emoji} ${mapping.title}</h2>
-          <p>Comece digitando sua pergunta abaixo</p>
-        </div>
-      `;
-    }
-
-    function backToMenu() {
-      document.getElementById('chatView').classList.remove('active');
-      document.getElementById('menuView').style.display = 'flex';
-      currentMode = '';
-      document.getElementById('messageInput').value = '';
     }
 
     function changeModel(model) {
