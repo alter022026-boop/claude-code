@@ -405,28 +405,71 @@
     }
 
     .mini-card {
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 18px;
-      padding: 16px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, rgba(15, 23, 42, 0.82) 100%);
+      border-radius: 22px;
+      padding: 18px 18px 16px;
       cursor: pointer;
-      transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
-      border: 1px solid rgba(148, 163, 184, 0.08);
+      transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      border: 1px solid rgba(148, 163, 184, 0.12);
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+      backdrop-filter: blur(14px);
+      overflow: hidden;
     }
 
     .mini-card:hover {
-      transform: translateX(6px);
-      box-shadow: 0 16px 30px rgba(0, 0, 0, 0.18);
-      background: rgba(56, 189, 248, 0.08);
+      transform: translateY(-2px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.20);
+      background: linear-gradient(180deg, rgba(56, 189, 248, 0.08) 0%, rgba(15, 23, 42, 0.85) 100%);
+      border-color: rgba(56, 189, 248, 0.30);
+    }
+
+    .mini-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mini-card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: rgba(15, 23, 42, 0.80);
+      color: #38bdf8;
+      font-size: 18px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
     }
 
     .mini-card-title {
-      font-size: 14px;
+      font-size: 15px;
+      font-weight: 800;
+      color: #f8fafc;
+      line-height: 1.35;
+      letter-spacing: 0.01em;
+    }
+
+    .mini-card-description {
+      font-size: 13px;
+      color: rgba(226, 232, 240, 0.82);
+      line-height: 1.6;
+      min-height: 38px;
+    }
+
+    .mini-card-badge {
+      margin-top: 4px;
+      align-self: flex-start;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(56, 189, 248, 0.12);
+      color: #7dd3fc;
+      font-size: 11px;
       font-weight: 700;
-      color: #ffffff;
-      line-height: 1.4;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
     }
 
     .sidebar-category {
@@ -1076,7 +1119,12 @@
       const container = document.getElementById(containerId);
       container.innerHTML = cards.map(card => `
         <div class="mini-card" onclick="selectUseCase('${card.id}')">
-          <div class="mini-card-title">${card.label}</div>
+          <div class="mini-card-header">
+            <div class="mini-card-icon">${card.icon || '✨'}</div>
+            <div class="mini-card-title">${card.label}</div>
+          </div>
+          ${card.description ? `<div class="mini-card-description">${card.description}</div>` : ''}
+          <div class="mini-card-badge">Clique para iniciar</div>
         </div>
       `).join('');
     }
