@@ -79,22 +79,43 @@ class AutonomousAgent {
           }
         }
 
-      } else if ((objective.includes('abrir') || objective.includes('abra')) && (objective.includes('youtube') || objective.includes('yt'))) {
-        // Abrir YouTube com termo de busca (ex: "abra o youtube com react")
-        console.log('🎬 Abrindo YouTube...');
-        
+      } else if ((objective.includes('abrir') || objective.includes('abra')) && (objective.includes('youtube') || objective.includes('youtub') || objective.includes('yt'))) {
+        // Abrir YouTube com termo de busca - versão melhorada
+        console.log('🎬 Detectado comando YouTube...');
+
         const youtubeSearch = this.extractYouTubeSearch(this.state.objective);
+        console.log('🔍 Termo extraído:', youtubeSearch);
+
         if (youtubeSearch) {
           // Abrir YouTube com busca específica
           const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(youtubeSearch)}`;
-          execSync(`powershell -Command "Start-Process '${searchUrl}'"`, { stdio: 'ignore' });
-          this.state.actions.push({ type: 'open_url', url: searchUrl, reason: `Buscar "${youtubeSearch}" no YouTube` });
-          this.state.currentStep++;
+          console.log('🌐 Abrindo URL:', searchUrl);
+
+          try {
+            execSync(`powershell -Command "Start-Process '${searchUrl}'"`, { stdio: 'ignore' });
+            this.state.actions.push({
+              type: 'open_url',
+              url: searchUrl,
+              reason: `Buscar "${youtubeSearch}" no YouTube`
+            });
+            this.state.currentStep++;
+            console.log('✅ YouTube aberto com sucesso!');
+          } catch (error) {
+            console.error('❌ Erro ao abrir YouTube:', error);
+            this.state.error = `Erro ao abrir YouTube: ${(error as Error).message}`;
+          }
         } else {
           // Apenas abrir YouTube
-          execSync('powershell -Command "Start-Process \'https://www.youtube.com\'"', { stdio: 'ignore' });
-          this.state.actions.push({ type: 'open_url', url: 'https://www.youtube.com', reason: 'Abrir YouTube' });
-          this.state.currentStep++;
+          console.log('📺 Abrindo YouTube sem busca específica...');
+          try {
+            execSync('powershell -Command "Start-Process \'https://www.youtube.com\'"', { stdio: 'ignore' });
+            this.state.actions.push({ type: 'open_url', url: 'https://www.youtube.com', reason: 'Abrir YouTube' });
+            this.state.currentStep++;
+            console.log('✅ YouTube aberto com sucesso!');
+          } catch (error) {
+            console.error('❌ Erro ao abrir YouTube:', error);
+            this.state.error = `Erro ao abrir YouTube: ${(error as Error).message}`;
+          }
         }
 
       } else if ((objective.includes('abrir') || objective.includes('abra')) && (objective.includes('google') || objective.includes('pesquisa'))) {
@@ -217,18 +238,53 @@ class AutonomousAgent {
   }
 
   private extractYouTubeSearch(objective: string): string | null {
-    // Extrair termo de busca do YouTube
-    // Exemplos: "abra o youtube com react", "youtube react", "buscar react no youtube"
+    // Extrair termo de busca do YouTube - versão melhorada e mais robusta
+    const objectiveLower = objective.toLowerCase();
+
+    // Padrões mais abrangentes para detectar comandos YouTube
     const patterns = [
-      /(?:youtube|yt)\s+(?:com|de|sobre|buscar|pesquisar)\s+(.+)/i,
-      /(?:abra|abrir)\s+(?:o\s+)?(?:youtube|yt)\s+(?:com|de|sobre|buscar|pesquisar)\s+(.+)/i,
-      /(.+)\s+(?:no|em)\s+(?:youtube|yt)/i
+      // "abra o youtube com [termo]"
+      /(?:abra|abrir|abre)\s+(?:o\s+)?(?:youtube|youtub|yt)\s+(?:com|de|sobre|buscar|pesquisar)\s+(.+)/i,
+      // "youtube com [termo]"
+      /(?:youtube|youtub|yt)\s+(?:com|de|sobre|buscar|pesquisar)\s+(.+)/i,
+      // "[termo] no youtube"
+      /(.+)\s+(?:no|em|no\s+o)\s+(?:youtube|youtub|yt)/i,
+      // "buscar [termo] no youtube"
+      /(?:buscar|pesquisar|procurar)\s+(.+)\s+(?:no|em|no\s+o)\s+(?:youtube|youtub|yt)/i,
+      // "youtube [termo]" (simples)
+      /(?:youtube|youtub|yt)\s+(.+)/i,
+      // Caso específico: "abrir youtub com [termo]" (com erro de digitação)
+      /(?:abrir|abra|abre)\s+(?:youtub|youtube|yt)\s+(?:com|de)\s+(.+)/i
     ];
 
     for (const pattern of patterns) {
       const match = objective.match(pattern);
-      if (match) {
-        return match[1].trim();
+      if (match && match[1]) {
+        let searchTerm = match[1].trim();
+
+        // Limpar termos desnecessários
+        searchTerm = searchTerm
+          .replace(/^(o|a|os|as)\s+/i, '') // remover artigos no início
+          .replace(/\s+(o|a|os|as)$/i, '') // remover artigos no final
+          .trim();
+
+        // Se encontrou um termo válido, retornar
+        if (searchTerm.length > 0) {
+          console.log(`🎯 Extraído termo YouTube: "${searchTerm}"`);
+          return searchTerm;
+        }
+      }
+    }
+
+    // Fallback: se contém "youtube" mas não conseguiu extrair, tentar pegar tudo após "com"
+    if (objectiveLower.includes('youtube') || objectiveLower.includes('youtub') || objectiveLower.includes('yt')) {
+      const comIndex = objectiveLower.indexOf(' com ');
+      if (comIndex !== -1) {
+        const searchTerm = objective.slice(comIndex + 5).trim();
+        if (searchTerm.length > 0) {
+          console.log(`🎯 Fallback extração YouTube: "${searchTerm}"`);
+          return searchTerm;
+        }
       }
     }
 
@@ -236,18 +292,51 @@ class AutonomousAgent {
   }
 
   private extractGoogleSearch(objective: string): string | null {
-    // Extrair termo de busca do Google
-    // Exemplos: "abra google com react", "google react", "pesquisar react no google"
+    // Extrair termo de busca do Google - versão melhorada
+    const objectiveLower = objective.toLowerCase();
+
+    // Padrões mais abrangentes para detectar comandos Google
     const patterns = [
+      // "abra o google com [termo]"
+      /(?:abra|abrir|abre)\s+(?:o\s+)?(?:google)\s+(?:com|de|sobre|buscar|pesquisar)\s+(.+)/i,
+      // "google com [termo]"
       /(?:google)\s+(?:com|de|sobre|buscar|pesquisar)\s+(.+)/i,
-      /(?:abra|abrir)\s+(?:o\s+)?(?:google)\s+(?:com|de|sobre|buscar|pesquisar)\s+(.+)/i,
-      /(.+)\s+(?:no|em)\s+(?:google)/i
+      // "[termo] no google"
+      /(.+)\s+(?:no|em|no\s+o)\s+(?:google)/i,
+      // "buscar [termo] no google"
+      /(?:buscar|pesquisar|procurar)\s+(.+)\s+(?:no|em|no\s+o)\s+(?:google)/i,
+      // "google [termo]" (simples)
+      /(?:google)\s+(.+)/i
     ];
 
     for (const pattern of patterns) {
       const match = objective.match(pattern);
-      if (match) {
-        return match[1].trim();
+      if (match && match[1]) {
+        let searchTerm = match[1].trim();
+
+        // Limpar termos desnecessários
+        searchTerm = searchTerm
+          .replace(/^(o|a|os|as)\s+/i, '') // remover artigos no início
+          .replace(/\s+(o|a|os|as)$/i, '') // remover artigos no final
+          .trim();
+
+        // Se encontrou um termo válido, retornar
+        if (searchTerm.length > 0) {
+          console.log(`🎯 Extraído termo Google: "${searchTerm}"`);
+          return searchTerm;
+        }
+      }
+    }
+
+    // Fallback: se contém "google" mas não conseguiu extrair, tentar pegar tudo após "com"
+    if (objectiveLower.includes('google')) {
+      const comIndex = objectiveLower.indexOf(' com ');
+      if (comIndex !== -1) {
+        const searchTerm = objective.slice(comIndex + 5).trim();
+        if (searchTerm.length > 0) {
+          console.log(`🎯 Fallback extração Google: "${searchTerm}"`);
+          return searchTerm;
+        }
       }
     }
 
