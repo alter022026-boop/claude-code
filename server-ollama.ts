@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import { join } from 'path';
+import AutonomousAgent from './autonomous-agent';
 
 const app = express();
 const PORT = 3000;
@@ -16,83 +17,30 @@ app.use(express.static('public'));
 // Store conversation history
 const conversationHistory: Array<{ role: string; content: string }> = [];
 
+// Store autonomous agent tasks
+const autonomousTasks: Map<string, any> = new Map();
+
 // Specialized prompts for different modes
 const SPECIALIZED_PROMPTS = {
-  'analyze-code': `You are an expert code analyst. When analyzing code:
-- Identify patterns, potential bugs, and performance issues
-- Explain the code flow and logic
-- Suggest improvements
-- Provide complexity analysis
-- Be concise but thorough
-- Use code examples in your explanations`,
+  'analyze-code': `Analyze code: identify patterns, bugs, performance issues. Explain flow and logic. Suggest improvements. Be conversational.`,
 
-  'debug-error': `You are a debugging expert. When helping debug:
-- Ask clarifying questions about the error
-- Identify root causes
-- Provide step-by-step debugging strategies
-- Suggest solutions with code examples
-- Explain why the error occurred
-- Prevent similar errors in the future`,
+  'debug-error': `Debug expert: identify root causes, provide step-by-step strategies, suggest solutions with examples. Be conversational.`,
 
-  'suggest-refactor': `You are a code refactoring specialist. When suggesting refactors:
-- Identify code smell and anti-patterns
-- Suggest modern, clean code patterns
-- Improve readability and maintainability
-- Optimize performance where possible
-- Explain the benefits of each refactor
-- Provide before/after code examples`,
+  'suggest-refactor': `Refactor specialist: identify code smells, suggest clean patterns, improve readability. Explain benefits.`,
 
-  'write-doc': `You are a technical documentation expert. When writing docs:
-- Create clear, comprehensive documentation
-- Include examples and use cases
-- Use proper formatting and structure
-- Make it beginner-friendly but thorough
-- Add code snippets and diagrams descriptions
-- Include troubleshooting sections`,
+  'write-doc': `Documentation expert: create clear, comprehensive docs with examples and structure. Be conversational about needs.`,
 
-  'summarize': `You are a summarization expert. When summarizing:
-- Extract key points and main ideas
-- Keep it concise but comprehensive
-- Maintain the original meaning
-- Highlight important details
-- Use clear structure (bullet points, sections)
-- Focus on actionable insights`,
+  'summarize': `Summarization expert: extract key points, keep concise but comprehensive. Use clear structure and focus on actionable insights.`,
 
-  'brainstorm': `You are a creative ideation expert. When brainstorming:
-- Generate diverse and innovative ideas
-- Think outside the box
-- Provide multiple perspectives
-- Build on suggestions
-- Encourage creative thinking
-- Evaluate feasibility
-- Suggest implementation approaches`,
+  'brainstorm': `Creative ideation expert: generate diverse ideas, think outside the box, provide multiple perspectives. Be collaborative.`,
 
-  'process-data': `You are a data processing specialist. When processing data:
-- Analyze data structure and format
-- Identify patterns and anomalies
-- Suggest data transformations
-- Provide code for processing
-- Optimize for performance
-- Ensure data integrity
-- Document transformations clearly`,
+  'process-data': `Data processing specialist: analyze structure, identify patterns, suggest transformations. Provide code and optimize performance.`,
 
-  'generate-report': `You are a report generation expert. When creating reports:
-- Structure data logically and professionally
-- Use clear formatting and sections
-- Include summaries and key findings
-- Add visualizations descriptions
-- Provide actionable insights
-- Make it easy to understand
-- Include recommendations`,
+  'generate-report': `Report generation expert: structure data logically, include summaries and insights. Make it professional and actionable.`,
 
-  'insights': `You are a data insights expert. When analyzing data:
-- Identify trends and patterns
-- Find correlations and relationships
-- Provide statistical context
-- Generate actionable insights
-- Explain findings clearly
-- Suggest next steps
-- Highlight important outliers`,
+  'insights': `Data insights expert: identify trends, patterns, correlations. Provide statistical context and actionable insights. Be engaging.`,
+
+  'general': `Helpful AI assistant: answer questions clearly, provide useful information. Be friendly and conversational.`,
 };
 
 // Health check
@@ -102,25 +50,17 @@ app.get('/api/health', (req, res) => {
 
 // Chat endpoint with mode support
 app.post('/api/chat', async (req, res) => {
-  const { message, model = 'llama2', mode = 'general' } = req.body;
+  const { message, model = 'gpt-oss:120b-cloud', mode = 'general' } = req.body;
 
   if (!message) {
     return res.status(400).json({ error: 'Message is required' });
   }
 
   try {
-    // Add user message to history
-    conversationHistory.push({ role: 'user', content: message });
-
-    // Build context from conversation history
-    let context = conversationHistory
-      .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
-      .join('\n');
-
     // Get specialized prompt if mode is set
-    const systemPrompt = SPECIALIZED_PROMPTS[mode as keyof typeof SPECIALIZED_PROMPTS] || SPECIALIZED_PROMPTS['analyze-code'];
+    const systemPrompt = SPECIALIZED_PROMPTS[mode as keyof typeof SPECIALIZED_PROMPTS] || SPECIALIZED_PROMPTS['general'];
     
-    const prompt = `System Instructions:\n${systemPrompt}\n\n${context}\nAssistant:`;
+    const prompt = `${systemPrompt}\n\nUser: ${message}\nAssistant:`;
 
     // Call Ollama
     const response = await fetch(OLLAMA_API, {
@@ -140,14 +80,10 @@ app.post('/api/chat', async (req, res) => {
     const data = await response.json();
     const assistantMessage = data.response.trim();
 
-    // Add assistant response to history
-    conversationHistory.push({ role: 'assistant', content: assistantMessage });
-
     res.json({
       response: assistantMessage,
       model: model,
       mode: mode,
-      history: conversationHistory,
     });
   } catch (error: any) {
     console.error('Chat error:', error);
@@ -195,6 +131,9 @@ app.get('/api/usecases', (req, res) => {
       { id: 'generate-report', label: '📈 Gerar Relatórios', description: 'Cria relatórios profissionais' },
       { id: 'insights', label: '🎯 Análise de Insights', description: 'Identifica padrões e tendências' },
     ],
+    agent: [
+      { id: 'agent', label: '🤖 Agente Autônomo', description: 'Conversa natural e proativa' },
+    ],
   });
 });
 
@@ -204,8 +143,135 @@ app.post('/api/clear', (req, res) => {
   res.json({ status: 'history cleared' });
 });
 
+// ============ AGENTE AUTÔNOMO ENDPOINTS ============
+
+// Iniciar uma tarefa autônoma
+app.post('/api/autonomous/start', async (req, res) => {
+  const { objective } = req.body;
+
+  if (!objective) {
+    return res.status(400).json({ error: 'Objective is required' });
+  }
+
+  const taskId = `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const agent = new AutonomousAgent(taskId, objective);
+
+  // Armazenar a tarefa
+  autonomousTasks.set(taskId, {
+    agent,
+    status: 'running',
+    startedAt: new Date(),
+  });
+
+  res.json({
+    taskId,
+    objective,
+    status: 'started',
+    message: 'Agente iniciado. Monitore com GET /api/autonomous/:taskId/status',
+  });
+
+  // Executar o agente em background
+  (async () => {
+    try {
+      const result = await agent.run();
+      autonomousTasks.set(taskId, {
+        agent,
+        status: result.completed ? 'completed' : 'failed',
+        result,
+        completedAt: new Date(),
+      });
+      console.log(`✅ Tarefa ${taskId} concluída`);
+    } catch (error) {
+      autonomousTasks.set(taskId, {
+        agent,
+        status: 'error',
+        error: (error as Error).message,
+        completedAt: new Date(),
+      });
+      console.error(`❌ Tarefa ${taskId} erro:`, error);
+    }
+  })();
+});
+
+// Obter status de uma tarefa
+app.get('/api/autonomous/:taskId/status', (req, res) => {
+  const { taskId } = req.params;
+  const task = autonomousTasks.get(taskId);
+
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  const agent = task.agent;
+  const status = agent.getStatus();
+
+  res.json({
+    taskId,
+    status: task.status,
+    objective: status.objective,
+    step: status.currentStep,
+    completed: status.completed,
+    error: status.error,
+    actionsCount: status.actions.length,
+    screenshotsCount: status.screenshots.length,
+    result: task.result,
+    timestamps: {
+      startedAt: task.startedAt,
+      completedAt: task.completedAt,
+    },
+  });
+});
+
+// Obter logs detalhados de uma tarefa
+app.get('/api/autonomous/:taskId/logs', (req, res) => {
+  const { taskId } = req.params;
+  const task = autonomousTasks.get(taskId);
+
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  const agent = task.agent;
+  const status = agent.getStatus();
+
+  res.json({
+    taskId,
+    objective: status.objective,
+    steps: status.currentStep,
+    actions: status.actions.map((action, i) => ({
+      step: i + 1,
+      type: action.type,
+      reason: action.reason,
+      details: {
+        x: action.x,
+        y: action.y,
+        text: action.text?.substring(0, 100),
+        command: action.command?.substring(0, 100),
+      },
+    })),
+    lastResponse: status.lastResponse.substring(0, 500),
+    screenshots: status.screenshots.length,
+    completed: status.completed,
+    error: status.error,
+  });
+});
+
+// Listar todas as tarefas
+app.get('/api/autonomous/tasks', (req, res) => {
+  const tasks = Array.from(autonomousTasks.entries()).map(([taskId, task]) => ({
+    taskId,
+    status: task.status,
+    objective: task.agent.getStatus().objective,
+    startedAt: task.startedAt,
+    completedAt: task.completedAt,
+  }));
+
+  res.json({ tasks });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`\n🚀 AI Chat Server running at http://localhost:${PORT}`);
-  console.log(`📡 Connected to Ollama at ${OLLAMA_API}\n`);
+  console.log(`📡 Connected to Ollama at ${OLLAMA_API}`);
+  console.log(`🤖 Autonomous Agent API available at /api/autonomous\n`);
 });

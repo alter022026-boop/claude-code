@@ -399,12 +399,18 @@
           <div class="category-label">Dados & Análise</div>
           <div id="dataCards"></div>
         </div>
+
+        <!-- Agent Card -->
+        <div class="sidebar-category">
+          <div class="category-label">Agente</div>
+          <div id="agentCards"></div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    let currentMode = '';
+    let currentMode = 'general';
     let currentModel = '';
     let isLoading = false;
 
@@ -434,6 +440,7 @@
         renderMiniCards('devCards', data.development);
         renderMiniCards('prodCards', data.productivity);
         renderMiniCards('dataCards', data.data);
+        renderMiniCards('agentCards', data.agent);
       } catch (error) {
         console.error('Error loading use cases:', error);
       }
